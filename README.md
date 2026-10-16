@@ -53,6 +53,36 @@ For production, run `npm run build && npm run server`. The server then serves th
 - **Server-side refusal fallback** (`fallbacks: "default"`)
 - A system prompt that forbids inventing facts. The model only sees the enriched fields passed by `briefFor()`.
 
+## Wix website integration (mdtanalytics.com)
+
+Outbound and the website work as one funnel:
+
+```
+Outreach email ──► follow-up 1 links the blog guide ──► guide's "Book a call" buttons
+      │                                                         │
+      └──── follow-up 2 links the booking page ◄────────────────┘
+                                   │
+                    "Book a discovery call" Wix form
+                                   │
+                 Inbound screen (Sync from Wix) ──► confirm slot ──► Meetings
+```
+
+What's on the Wix site:
+- **Blog post** (draft): *How AI Agents Turn Cold Outreach into Booked Meetings: A Practical Guide for UK B2B Teams*. It has two CTA buttons pointing to `/book-a-call`.
+- **Form**: *Book a discovery call* (`333b46de-343f-48e4-a049-c2f79a6f7739`), with fields for name, work email, company, job title, company size, goal, notes and preferred time. Each submission creates or updates a Wix contact.
+
+In the app:
+- **Settings → Website (Wix)** holds the guide and booking URLs. Outreach follow-ups link to them, and the booking page is used as the meeting link.
+- **Inbound** pulls form submissions through `GET /api/wix/booking-requests` and books the next free slot that matches the visitor's preferred time. If the person was already in an outbound sequence, that prospect is marked *meeting booked (via website)*, so the campaign gets the credit.
+
+Server configuration:
+
+```bash
+export WIX_API_KEY=...        # Wix API key with the "Wix Forms" permission (account owner creates it)
+export WIX_SITE_ID=fef07b19-d0a4-4b40-8266-4e03c92e5e6e   # default: mdtanalytics.com
+export WIX_BOOKING_FORM_ID=333b46de-343f-48e4-a049-c2f79a6f7739   # default
+```
+
 ## Demo mode vs. live data
 
 The Prospector, the Enricher's data and the engagement simulation in `sequencer.js` are **demo providers**. They generate realistic, deterministic data, so you can demo the whole flow to a prospective client today. To go live, replace these pieces (their interfaces stay the same):

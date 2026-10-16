@@ -15,6 +15,7 @@ export default function Settings() {
   }, []);
 
   const setAvail = (patch) => setS({ ...s, availability: { ...s.availability, ...patch } });
+  const setSite = (patch) => setS({ ...s, website: { ...s.website, ...patch } });
 
   function save(e) {
     e.preventDefault();
@@ -41,6 +42,25 @@ export default function Settings() {
         <label className="check">
           <input type="checkbox" checked={s.useAI} onChange={(e) => setS({ ...s, useAI: e.target.checked })} />
           Use Claude to write outreach (falls back to templates if unavailable)
+        </label>
+      </section>
+
+      <section className="card">
+        <h2>Website (Wix)</h2>
+        <p className="muted">
+          Booking sync:{' '}
+          {health?.wix ? <span className="ok">connected</span> : <span className="warn">set WIX_API_KEY on the API server to sync booking requests</span>}
+        </p>
+        <label>
+          Blog guide (linked in the first follow-up)
+          <input value={s.website.guideUrl} onChange={(e) => setSite({ guideUrl: e.target.value })} />
+        </label>
+        <label>
+          Booking page (linked in the last follow-up and used as the meeting link)
+          <input
+            value={s.website.bookingUrl}
+            onChange={(e) => setS({ ...s, website: { ...s.website, bookingUrl: e.target.value }, availability: { ...s.availability, meetingLink: e.target.value } })}
+          />
         </label>
       </section>
 

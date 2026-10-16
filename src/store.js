@@ -2,8 +2,14 @@ import React, { createContext, useContext, useEffect, useReducer } from 'react';
 
 const STORAGE_KEY = 'mdt-outbound-v1';
 
+export const WEBSITE = {
+  guideUrl: 'https://www.mdtanalytics.com/post/how-ai-agents-turn-cold-outreach-into-booked-meetings-a-practical-guide-for-uk-b2b-teams',
+  bookingUrl: 'https://www.mdtanalytics.com/book-a-call',
+};
+
 export const defaultSettings = {
   workspaceName: 'MDT Analytics',
+  website: { ...WEBSITE },
   useAI: true,
   dailySendCap: 50,
   suppression: [],
@@ -11,7 +17,7 @@ export const defaultSettings = {
     hours: [10, 14, 16],
     durationMinutes: 30,
     meetingTitle: 'Intro call with MDT Analytics',
-    meetingLink: 'https://cal.com/mdt-analytics/intro',
+    meetingLink: WEBSITE.bookingUrl,
   },
 };
 
@@ -37,6 +43,7 @@ const initialState = {
   campaigns: [],
   prospects: [],
   meetings: [],
+  inbound: [],
   logs: [],
 };
 
@@ -90,6 +97,26 @@ function reducer(state, action) {
     }
     case 'updateMeeting':
       return { ...state, meetings: state.meetings.map((m) => (m.id === action.id ? { ...m, ...action.patch } : m)) };
+    case 'inboundSynced': {
+      const known = new Map(state.inbound.map((r) => [r.id, r]));
+      const merged = action.requests.map((r) => ({ ...known.get(r.id), ...r, status: known.get(r.id)?.status || 'new' }));
+      const ids = new Set(merged.map((r) => r.id));
+      return { ...state, inbound: [...merged, ...state.inbound.filter((r) => !ids.has(r.id))] };
+    }
+    case 'confirmInbound': {
+      const email = action.request.email.toLowerCase();
+      return {
+        ...state,
+        inbound: state.inbound.map((r) => (r.id === action.request.id ? { ...r, status: 'confirmed', meetingId: action.meeting.id } : r)),
+        meetings: [...state.meetings, action.meeting],
+        // Close the loop: if this person came from outbound, credit the campaign.
+        prospects: state.prospects.map((p) =>
+          p.email && p.email.toLowerCase() === email ? { ...p, status: 'meeting_booked', meetingId: action.meeting.id, bookedVia: 'website' } : p,
+        ),
+      };
+    }
+    case 'dismissInbound':
+      return { ...state, inbound: state.inbound.map((r) => (r.id === action.id ? { ...r, status: 'dismissed' } : r)) };
     case 'saveSettings':
       return { ...state, settings: { ...state.settings, ...action.settings } };
     case 'reset':
@@ -104,7 +131,7 @@ function load() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return initialState;
     const saved = JSON.parse(raw);
-    return { ...initialState, ...saved, settings: { ...defaultSettings, ...saved.settings } };
+    return { ...initialState, ...saved, settings: { ...defaultSettings, ...saved.settings, website: { ...WEBSITE, ...saved.settings?.website } } };
   } catch (e) {
     return initialState;
   }

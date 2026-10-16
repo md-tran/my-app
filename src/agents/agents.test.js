@@ -2,7 +2,8 @@ import { findProspects } from './prospector';
 import { enrichProspect, scoreProspect } from './enricher';
 import { templateMessage, personalise } from './personaliser';
 import { buildSequence, simulateEngagement, addBusinessDays } from './sequencer';
-import { proposeSlots, bookMeeting } from './booker';
+import { proposeSlots, bookMeeting, slotForPreference } from './booker';
+import { meetingFromRequest } from '../components/Inbound';
 import { runResearch, runOutreach } from './orchestrator';
 import { defaultIcp, defaultMessaging, defaultSettings, reducer, initialState } from '../store';
 import { clientReport } from '../components/Clients';
@@ -117,4 +118,39 @@ test('reducer adds unsubscribes to suppression and client report bills meetings'
   const meeting = { id: 'm1', prospectId: 'p1', status: 'confirmed' };
   expect(clientReport(s.clients[0], s.prospects, [meeting]).invoice).toBe(1200);
   expect(clientReport(s.clients[0], s.prospects, [{ ...meeting, status: 'cancelled' }]).invoice).toBe(1000);
+});
+
+test('outreach links the blog guide and booking page from the Wix site', () => {
+  const [p] = findProspects(defaultIcp, { count: 1, seed: 'w' });
+  const e = enrichProspect(p, defaultIcp, 'w');
+  const m = templateMessage(e, { ...icp, ...defaultSettings.website });
+  expect(m.followUps[0].body).toContain(defaultSettings.website.guideUrl);
+  expect(m.followUps[1].body).toContain(defaultSettings.website.bookingUrl);
+  expect(defaultSettings.availability.meetingLink).toBe(defaultSettings.website.bookingUrl);
+});
+
+test('website booking requests become meetings and credit matching outbound prospects', () => {
+  const from = new Date('2026-10-19T08:00:00');
+  const morning = slotForPreference(defaultSettings.availability, [], 'Morning (9am–12pm)', from);
+  const afternoon = slotForPreference(defaultSettings.availability, [], 'Afternoon (12pm–5pm)', from);
+  expect(new Date(morning).getHours()).toBeLessThan(12);
+  expect(new Date(afternoon).getHours()).toBeGreaterThanOrEqual(12);
+
+  const request = { id: 's1', firstName: 'Ada', lastName: 'Lee', email: 'Ada@Acme.com', company: 'Acme', preferredTime: 'Morning (9am–12pm)', createdDate: '2026-10-16T10:00:00Z' };
+  const prospect = { id: 'p1', email: 'ada@acme.com', status: 'sequenced', company: {} };
+  let s = { ...initialState, prospects: [prospect] };
+  s = reducer(s, { type: 'inboundSynced', requests: [request] });
+  s = reducer(s, { type: 'inboundSynced', requests: [request] });
+  expect(s.inbound).toHaveLength(1);
+  expect(s.inbound[0].status).toBe('new');
+
+  const meeting = meetingFromRequest(request, morning, defaultSettings.availability);
+  s = reducer(s, { type: 'confirmInbound', request, meeting });
+  expect(s.meetings).toHaveLength(1);
+  expect(s.inbound[0].status).toBe('confirmed');
+  expect(s.prospects[0]).toMatchObject({ status: 'meeting_booked', bookedVia: 'website' });
+
+  // A later sync must not reset a handled request.
+  s = reducer(s, { type: 'inboundSynced', requests: [request] });
+  expect(s.inbound[0].status).toBe('confirmed');
 });

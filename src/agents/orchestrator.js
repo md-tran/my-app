@@ -53,7 +53,7 @@ export async function runResearch(campaign, settings, emit, { delay = 120 } = {}
   const worker = async () => {
     while (todo.length) {
       const i = todo.shift();
-      const message = await personalise(results[i], { ...icp, ...campaign.messaging }, { useAI });
+      const message = await personalise(results[i], { ...icp, ...campaign.messaging, ...settings.website }, { useAI });
       if (message.source === 'claude') aiCount++;
       results[i] = { ...results[i], message, status: campaign.autoApprove ? 'approved' : 'drafted' };
     }

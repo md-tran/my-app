@@ -3,6 +3,7 @@ const fs = require('fs');
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const { personalise, MODEL } = require('./personalise');
+const { fetchBookingRequests, wixConfigured } = require('./wix');
 
 const app = express();
 app.use(express.json({ limit: '100kb' }));
@@ -10,7 +11,7 @@ app.use(express.json({ limit: '100kb' }));
 const aiConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, ai: aiConfigured(), model: MODEL });
+  res.json({ ok: true, ai: aiConfigured(), model: MODEL, wix: wixConfigured() });
 });
 
 app.post('/api/personalise', async (req, res) => {
@@ -33,6 +34,16 @@ app.post('/api/personalise', async (req, res) => {
     }
     console.error('Personalisation failed:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/wix/booking-requests', async (req, res) => {
+  if (!wixConfigured()) return res.status(503).json({ error: 'WIX_API_KEY is not set' });
+  try {
+    res.json({ requests: await fetchBookingRequests() });
+  } catch (err) {
+    console.error('Wix sync failed:', err.message);
+    res.status(err.status === 401 || err.status === 403 ? 503 : 502).json({ error: err.message });
   }
 });
 

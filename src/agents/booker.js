@@ -22,6 +22,13 @@ export function proposeSlots(availability, bookedMeetings = [], from = new Date(
   return slots;
 }
 
+// Website bookings say "Morning", "Afternoon" or "Either works".
+export function slotForPreference(availability, bookedMeetings, preference = '', from = new Date()) {
+  const want = /morning/i.test(preference) ? (h) => h < 12 : /afternoon/i.test(preference) ? (h) => h >= 12 : () => true;
+  const hours = availability.hours.filter(want);
+  return proposeSlots({ ...availability, hours: hours.length ? hours : availability.hours }, bookedMeetings, from, 1)[0];
+}
+
 export function bookMeeting(prospect, slot, availability) {
   const start = new Date(slot);
   const end = new Date(start.getTime() + availability.durationMinutes * 60000);

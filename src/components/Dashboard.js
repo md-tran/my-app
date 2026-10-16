@@ -21,6 +21,7 @@ export default function Dashboard({ go }) {
   const [clientId, setClientId] = useState('all');
   const prospects = state.prospects.filter((p) => clientId === 'all' || p.clientId === clientId);
   const f = funnel(prospects);
+  const websiteBookings = clientId === 'all' ? state.meetings.filter((m) => m.source === 'website' && !state.prospects.some((p) => p.meetingId === m.id)).length : 0;
   const upcoming = state.meetings
     .filter((m) => m.status === 'confirmed' && new Date(m.start) > new Date())
     .filter((m) => clientId === 'all' || prospects.some((p) => p.id === m.prospectId))
@@ -65,7 +66,11 @@ export default function Dashboard({ go }) {
         <Stat label="Prospects sourced" value={f.sourced} />
         <Stat label="Contacted" value={f.contacted} hint={`${pct(f.contacted, f.sourced)} of sourced`} />
         <Stat label="Reply rate" value={pct(f.replied, f.contacted)} hint={`${f.replied} replies`} />
-        <Stat label="Meetings booked" value={f.meetings} hint={`${pct(f.meetings, f.contacted)} of contacted`} />
+        <Stat
+          label="Meetings booked"
+          value={f.meetings}
+          hint={`${pct(f.meetings, f.contacted)} of contacted${websiteBookings ? ` · +${websiteBookings} from website` : ''}`}
+        />
       </div>
 
       <div className="grid-2">

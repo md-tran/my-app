@@ -82,11 +82,13 @@ export function templateMessage(p, icp) {
     followUps: [
       {
         day: 3,
-        body: `Hi ${p.firstName}, just bumping this up in case it got buried. Happy to share a 2-minute example of what we built for a similar ${p.company.industry} business.`,
+        body: icp.guideUrl
+          ? `Hi ${p.firstName}, in case it's useful, we wrote up how we approach this for ${p.company.industry} teams: ${icp.guideUrl}`
+          : `Hi ${p.firstName}, just bumping this up in case it got buried. Happy to share a 2-minute example of what we built for a similar ${p.company.industry} business.`,
       },
       {
         day: 7,
-        body: `Hi ${p.firstName}, last note from me — if reporting isn't a priority at ${p.company.name} right now, no worries at all. If it is, I can hold a slot this week.`,
+        body: `Hi ${p.firstName}, last note from me — if this isn't a priority at ${p.company.name} right now, no worries at all. If it is, you can pick a time here: ${icp.bookingUrl || 'just reply and I will send some times'}`,
       },
     ],
     personalisationPoints: [signal ? signal.label : `Industry: ${p.company.industry}`, stack ? `Tech stack: ${stack}` : null].filter(Boolean),

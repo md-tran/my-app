@@ -46,14 +46,14 @@ export default function Outreach() {
         tab === 'live' ? (
           <SequenceCard key={p.id} p={p} open={openId === p.id} toggle={() => setOpenId(openId === p.id ? null : p.id)} />
         ) : (
-          <DraftCard key={p.id} p={p} useAI={state.settings.useAI} icp={state.campaigns.find((c) => c.id === p.campaignId)} dispatch={dispatch} />
+          <DraftCard key={p.id} p={p} useAI={state.settings.useAI} website={state.settings.website} icp={state.campaigns.find((c) => c.id === p.campaignId)} dispatch={dispatch} />
         ),
       )}
     </div>
   );
 }
 
-function DraftCard({ p, icp, useAI, dispatch }) {
+function DraftCard({ p, icp, useAI, website, dispatch }) {
   const [subject, setSubject] = useState(p.message.subject);
   const [body, setBody] = useState(p.message.body);
   const [regenerating, setRegenerating] = useState(false);
@@ -63,7 +63,7 @@ function DraftCard({ p, icp, useAI, dispatch }) {
   async function regenerate() {
     if (!icp) return;
     setRegenerating(true);
-    const message = await personalise(p, { ...icp.icp, ...icp.messaging }, { useAI });
+    const message = await personalise(p, { ...icp.icp, ...icp.messaging, ...website }, { useAI });
     setSubject(message.subject);
     setBody(message.body);
     dispatch({ type: 'updateProspect', id: p.id, patch: { message } });

@@ -6,7 +6,7 @@ const SYSTEM = `You write first-touch B2B cold emails for an outbound team.
 
 Write like a thoughtful peer, not a marketer: plain language, short sentences, no hype, no exclamation marks, no "I hope this finds you well". The first email is under 120 words, opens with something specific to the prospect, connects it to one concrete problem the sender solves, and ends with a single low-friction question.
 
-Use only the facts supplied about the prospect. Never invent metrics, mutual connections, customer names, news or anything else you were not given; if there is no strong signal, anchor on their role, industry and company size instead. Follow-ups are 1–3 sentences, add something new rather than just "bumping", and the last one gracefully closes the loop.`;
+Use only the facts supplied about the prospect. Never invent metrics, mutual connections, customer names, news or anything else you were not given; if there is no strong signal, anchor on their role, industry and company size instead. Follow-ups are 1–3 sentences, add something new rather than just "bumping", and the last one gracefully closes the loop. Use any URLs exactly as given and never invent links.`;
 
 const SCHEMA = {
   type: 'object',
@@ -47,6 +47,8 @@ async function personalise({ prospect, icp }) {
     `What the sender sells: ${icp.offer}`,
     `Value proposition: ${icp.valueProp}`,
     `Call to action to use: ${icp.callToAction}`,
+    icp.guideUrl ? `Our guide on this topic (link it in the first follow-up, once): ${icp.guideUrl}` : '',
+    icp.bookingUrl ? `Booking page (link it in the final follow-up): ${icp.bookingUrl}` : '',
     '',
     'Prospect facts (JSON):',
     JSON.stringify(prospect, null, 2),
