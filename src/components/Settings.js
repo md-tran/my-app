@@ -1,0 +1,97 @@
+import React, { useEffect, useState } from 'react';
+import { useStore } from '../store';
+
+export default function Settings() {
+  const { state, dispatch } = useStore();
+  const [s, setS] = useState(state.settings);
+  const [suppression, setSuppression] = useState(state.settings.suppression.join('\n'));
+  const [health, setHealth] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setHealth)
+      .catch(() => setHealth(null));
+  }, []);
+
+  const setAvail = (patch) => setS({ ...s, availability: { ...s.availability, ...patch } });
+
+  function save(e) {
+    e.preventDefault();
+    dispatch({
+      type: 'saveSettings',
+      settings: { ...s, suppression: suppression.split(/[\n,]/).map((x) => x.trim()).filter(Boolean) },
+    });
+  }
+
+  return (
+    <form className="form" onSubmit={save}>
+      <h1>Settings</h1>
+
+      <section className="card">
+        <h2>AI personalisation</h2>
+        <p className="muted">
+          API server:{' '}
+          {health ? (
+            health.ai ? <span className="ok">connected, Claude ready ({health.model})</span> : <span className="warn">running, but ANTHROPIC_API_KEY is not set</span>
+          ) : (
+            <span className="warn">not reachable — start it with <code>npm run server</code></span>
+          )}
+        </p>
+        <label className="check">
+          <input type="checkbox" checked={s.useAI} onChange={(e) => setS({ ...s, useAI: e.target.checked })} />
+          Use Claude to write outreach (falls back to templates if unavailable)
+        </label>
+      </section>
+
+      <section className="card">
+        <h2>Sending & compliance</h2>
+        <label>
+          Daily send cap
+          <input type="number" min="1" value={s.dailySendCap} onChange={(e) => setS({ ...s, dailySendCap: Number(e.target.value) })} />
+        </label>
+        <label>
+          Suppression list (emails or domains, one per line)
+          <textarea rows="5" value={suppression} onChange={(e) => setSuppression(e.target.value)} />
+        </label>
+        <p className="muted small">Unsubscribes are added automatically. Every first email carries an opt-out line.</p>
+      </section>
+
+      <section className="card">
+        <h2>Meeting booking</h2>
+        <div className="row">
+          <label>
+            Meeting title
+            <input value={s.availability.meetingTitle} onChange={(e) => setAvail({ meetingTitle: e.target.value })} />
+          </label>
+          <label>
+            Duration (minutes)
+            <input type="number" min="10" value={s.availability.durationMinutes} onChange={(e) => setAvail({ durationMinutes: Number(e.target.value) })} />
+          </label>
+        </div>
+        <label>
+          Bookable hours (24h, comma-separated)
+          <input
+            value={s.availability.hours.join(', ')}
+            onChange={(e) => setAvail({ hours: e.target.value.split(',').map((h) => parseInt(h, 10)).filter((h) => h >= 0 && h < 24) })}
+          />
+        </label>
+        <label>
+          Meeting link
+          <input value={s.availability.meetingLink} onChange={(e) => setAvail({ meetingLink: e.target.value })} />
+        </label>
+      </section>
+
+      <div className="actions">
+        <button className="btn primary" type="submit">Save settings</button>
+        <button
+          className="btn ghost danger"
+          type="button"
+          onClick={() => window.confirm('Delete all campaigns, prospects and meetings?') && dispatch({ type: 'reset' })}
+        >
+          Reset workspace
+        </button>
+      </div>
+    </form>
+  );
+}
