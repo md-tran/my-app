@@ -12,7 +12,7 @@ export function useAgents() {
     setBusy(campaign.id);
     try {
       emit('Orchestrator', `Starting campaign “${campaign.name}”.`);
-      const prospects = await runResearch(campaign, state.settings, emit);
+      const prospects = await runResearch(campaign, state.settings, emit, { existing: state.prospects });
       dispatch({ type: 'researchDone', campaignId: campaign.id, prospects });
     } catch (e) {
       emit('Orchestrator', `Run failed: ${e.message}`, 'error');

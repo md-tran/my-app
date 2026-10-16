@@ -75,7 +75,7 @@ export default function Campaigns({ go }) {
               </div>
               <div className="actions">
                 <button className="btn primary" disabled={!!busy} onClick={() => research(c)}>
-                  {busy === c.id ? 'Agents working…' : c.runs ? 'Re-run agents' : 'Run agents'}
+                  {busy === c.id ? 'Agents working…' : c.runs ? 'Find more prospects' : 'Run agents'}
                 </button>
                 {drafts > 0 && (
                   <button className="btn" onClick={() => go('outreach')}>

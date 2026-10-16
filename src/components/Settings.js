@@ -47,6 +47,20 @@ export default function Settings() {
       </section>
 
       <section className="card">
+        <h2>Prospect data</h2>
+        <p className="muted">
+          Apollo: {health?.sources?.apollo ? <span className="ok">connected</span> : <span className="warn">not set (APOLLO_API_KEY)</span>}
+          {' · '}
+          Companies House: {health?.sources?.companiesHouse ? <span className="ok">connected</span> : <span className="warn">not set (COMPANIES_HOUSE_API_KEY)</span>}
+        </p>
+        <label className="check">
+          <input id="live-data" type="checkbox" checked={s.liveData !== false} onChange={(e) => setS({ ...s, liveData: e.target.checked })} />
+          Use live prospect data when connected (Apollo reveals cost about 1 credit per contact)
+        </label>
+        <p className="muted small">Without Apollo the agents use demo data, so you can try the full flow without spending credits.</p>
+      </section>
+
+      <section className="card">
         <h2>Website (Wix)</h2>
         <p className="muted">
           Booking sync:{' '}

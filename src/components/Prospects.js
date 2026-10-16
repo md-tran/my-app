@@ -112,11 +112,24 @@ function ProspectDetail({ p, onClose }) {
       <dl>
         <dt>Email</dt><dd>{p.email} ({p.emailStatus})</dd>
         {p.phone && (<><dt>Phone</dt><dd>{p.phone}</dd></>)}
-        <dt>LinkedIn</dt><dd><a href={p.linkedin} target="_blank" rel="noreferrer">Profile</a></dd>
-        <dt>Company</dt><dd>{p.company.domain} · {p.company.city}</dd>
-        <dt>Size / revenue</dt><dd>{p.company.employees} staff · {p.company.revenueBand}</dd>
-        <dt>Funding</dt><dd>{p.company.fundingStage}</dd>
-        <dt>Tech stack</dt><dd>{p.company.techStack.join(', ')}</dd>
+        {p.linkedin && (<><dt>LinkedIn</dt><dd><a href={p.linkedin} target="_blank" rel="noreferrer">Profile</a></dd></>)}
+        <dt>Company</dt><dd>{[p.company.domain, p.company.city].filter(Boolean).join(' · ')}</dd>
+        <dt>Size</dt><dd>{p.company.employees ? `${p.company.employees} staff` : 'Unknown'}{p.company.revenueBand ? ` · ${p.company.revenueBand}` : ''}</dd>
+        {p.company.fundingStage && p.company.fundingStage !== 'Unknown' && (<><dt>Funding</dt><dd>{p.company.fundingStage}</dd></>)}
+        {p.company.techStack?.length > 0 && (<><dt>Tech stack</dt><dd>{p.company.techStack.join(', ')}</dd></>)}
+        {p.companiesHouse?.found && (
+          <>
+            <dt>Companies House</dt>
+            <dd>
+              <a href={`https://find-and-update.company-information.service.gov.uk/company/${p.companiesHouse.number}`} target="_blank" rel="noreferrer">
+                {p.companiesHouse.number}
+              </a>{' '}
+              · {p.companiesHouse.status} {p.companiesHouse.type}
+              {p.companiesHouse.incorporated ? ` · since ${p.companiesHouse.incorporated.slice(0, 4)}` : ''}
+            </dd>
+          </>
+        )}
+        <dt>Source</dt><dd>{p.source === 'apollo' ? `Apollo${p.companiesHouse ? ' + Companies House' : ''}` : 'Demo data'}</dd>
       </dl>
       <h3>Why this score ({p.score})</h3>
       <ul className="reasons">

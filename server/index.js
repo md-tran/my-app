@@ -4,6 +4,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const { personalise, MODEL } = require('./personalise');
 const { fetchBookingRequests, wixConfigured } = require('./wix');
+const { findLiveProspects, sourcesStatus } = require('./sources');
 
 const app = express();
 app.use(express.json({ limit: '100kb' }));
@@ -11,7 +12,7 @@ app.use(express.json({ limit: '100kb' }));
 const aiConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, ai: aiConfigured(), model: MODEL, wix: wixConfigured() });
+  res.json({ ok: true, ai: aiConfigured(), model: MODEL, wix: wixConfigured(), sources: sourcesStatus() });
 });
 
 app.post('/api/personalise', async (req, res) => {
@@ -34,6 +35,19 @@ app.post('/api/personalise', async (req, res) => {
     }
     console.error('Personalisation failed:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/prospects/search', async (req, res) => {
+  const { icp, count = 25, page = 1, exclude = [] } = req.body || {};
+  if (!icp) return res.status(400).json({ error: 'icp is required' });
+  if (!sourcesStatus().apollo) return res.status(503).json({ error: 'APOLLO_API_KEY is not set' });
+  try {
+    res.json(await findLiveProspects(icp, Math.max(1, Math.min(100, Number(count) || 25)), { exclude, page: Math.max(1, Number(page) || 1) }));
+  } catch (err) {
+    console.error('Prospect search failed:', err.message);
+    const status = err.status === 401 || err.status === 403 ? 503 : err.status === 429 ? 429 : 502;
+    res.status(status).json({ error: err.message });
   }
 });
 

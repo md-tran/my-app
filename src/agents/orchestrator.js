@@ -1,6 +1,7 @@
 import { findProspects } from './prospector';
-import { enrichProspect } from './enricher';
-import { personalise, aiAvailable } from './personaliser';
+import { enrichProspect, scoreProspect } from './enricher';
+import { personalise } from './personaliser';
+import { getHealth, fetchLiveProspects } from './sources';
 import { buildSequence, simulateEngagement } from './sequencer';
 import { proposeSlots, bookMeeting } from './booker';
 
@@ -10,19 +11,36 @@ import { proposeSlots, bookMeeting } from './booker';
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function runResearch(campaign, settings, emit, { delay = 120 } = {}) {
+export async function runResearch(campaign, settings, emit, { delay = 120, existing = [] } = {}) {
   const { icp } = campaign;
   const seed = `${campaign.id}:${campaign.runs || 0}`;
   const suppressed = new Set(settings.suppression.map((s) => s.trim().toLowerCase()).filter(Boolean));
+  const health = await getHealth();
+  const live = settings.liveData !== false && Boolean(health?.sources?.apollo);
 
-  emit('Prospector', `Searching for ${campaign.targetCount} contacts matching the ICP…`);
-  await pause(delay);
-  const sourced = findProspects(icp, { count: campaign.targetCount, seed });
+  let sourced;
+  if (live) {
+    emit('Prospector', `Searching Apollo for ${campaign.targetCount} contacts matching the ICP…`);
+    // Never pay to reveal someone twice: skip people already in any campaign or suppressed.
+    const exclude = [...existing.flatMap((p) => [p.apolloId, p.email]), ...suppressed].filter(Boolean);
+    const res = await fetchLiveProspects(icp, { count: campaign.targetCount, page: (campaign.runs || 0) + 1, exclude });
+    res.notes.forEach((n) => emit('Prospector', n));
+    sourced = res.prospects;
+  } else {
+    if (settings.liveData !== false && health) emit('Prospector', 'No Apollo key on the server — using demo data.', 'warn');
+    emit('Prospector', `Searching for ${campaign.targetCount} contacts matching the ICP (demo data)…`);
+    await pause(delay);
+    sourced = findProspects(icp, { count: campaign.targetCount, seed });
+  }
   emit('Prospector', `Found ${sourced.length} contacts across ${new Set(sourced.map((p) => p.company.domain)).size} companies.`, 'success');
 
-  emit('Enricher', 'Enriching emails, firmographics and buying signals…');
+  emit('Enricher', live ? 'Scoring fit from Apollo and Companies House data…' : 'Enriching emails, firmographics and buying signals…');
   await pause(delay);
-  const enriched = sourced.map((p) => ({ ...enrichProspect(p, icp, seed), campaignId: campaign.id, clientId: campaign.clientId }));
+  const enriched = sourced.map((p) => ({
+    ...(live ? { ...p, ...scoreProspect(p, icp) } : enrichProspect(p, icp, seed)),
+    campaignId: campaign.id,
+    clientId: campaign.clientId,
+  }));
   const verified = enriched.filter((p) => p.emailStatus === 'verified').length;
   emit('Enricher', `Enriched ${enriched.length} contacts — ${verified} verified emails.`, 'success');
 
@@ -33,6 +51,10 @@ export async function runResearch(campaign, settings, emit, { delay = 120 } = {}
       results.push({ ...p, status: 'disqualified', disqualifiedReason: 'On suppression list' });
     } else if (p.emailStatus === 'invalid') {
       results.push({ ...p, status: 'disqualified', disqualifiedReason: 'Invalid email' });
+    } else if (p.companiesHouse?.individualSubscriber) {
+      results.push({ ...p, status: 'disqualified', disqualifiedReason: 'Partnership: under PECR this needs prior consent' });
+    } else if (p.companiesHouse && !p.companiesHouse.found && !p.companiesHouse.error) {
+      results.push({ ...p, status: 'disqualified', disqualifiedReason: 'Not found on Companies House: may be a sole trader, which needs consent under PECR' });
     } else if (p.score < campaign.minScore) {
       results.push({ ...p, status: 'disqualified', disqualifiedReason: `Score ${p.score} below threshold ${campaign.minScore}` });
     } else {
@@ -40,9 +62,9 @@ export async function runResearch(campaign, settings, emit, { delay = 120 } = {}
     }
   }
   const qualified = results.filter((p) => p.status !== 'disqualified');
-  emit('Enricher', `${qualified.length} qualified, ${results.length - qualified.length} disqualified (score, invalid email or suppression).`);
+  emit('Enricher', `${qualified.length} qualified, ${results.length - qualified.length} disqualified (fit score, email, PECR or suppression).`);
 
-  const useAI = settings.useAI && (await aiAvailable());
+  const useAI = settings.useAI && Boolean(health?.ai);
   if (settings.useAI && !useAI) {
     emit('Personaliser', 'Claude unavailable (start the API server with ANTHROPIC_API_KEY set) — using templates.', 'warn');
   }

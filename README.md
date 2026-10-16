@@ -83,6 +83,29 @@ export WIX_SITE_ID=fef07b19-d0a4-4b40-8266-4e03c92e5e6e   # default: mdtanalytic
 export WIX_BOOKING_FORM_ID=333b46de-343f-48e4-a049-c2f79a6f7739   # default
 ```
 
+## Live prospect data (Apollo + Companies House)
+
+Set these on the API server and the Prospector and Enricher switch from demo data to live data (Settings → Prospect data shows the status, and has a switch back to demo data):
+
+```bash
+export APOLLO_API_KEY=...            # Apollo paid plan with API access
+export COMPANIES_HOUSE_API_KEY=...   # free: developer.company-information.service.gov.uk
+```
+
+Each run works like this (`server/sources/`):
+1. **Apollo search** (free): people matching the ICP's seniority, location, company size and industry. Only people Apollo holds an email for are kept.
+2. **Apollo reveal** (`people/bulk_match`, about 1 credit per person): full name, work email with verification status, LinkedIn URL and company details. Only the campaign's "prospects per run" are revealed. Anyone already in a campaign or on the suppression list is skipped, so you never pay twice for the same person.
+3. **Companies House** (UK employers): confirms the company is registered and active, and adds a *new director* buying signal for appointments in the last 90 days. Two kinds of prospect are disqualified, because PECR requires prior consent before emailing them:
+   - employers not found on the register (possible sole traders)
+   - partnerships
+4. The fit score, review queue and outreach then work as before. "Find more prospects" fetches the next page of results.
+
+The app's industry labels map to Apollo industry names in `server/sources/apollo.js` (`INDUSTRIES`). Check them against the industry list in your Apollo account and adjust if needed.
+
+`npm run test:server` runs the source tests against stubbed API responses.
+
+**LinkedIn:** there is no LinkedIn integration by design. LinkedIn has no public API for prospecting, and its User Agreement prohibits scraping and automated messaging. The sequence's LinkedIn step is a manual task with a link to the prospect's profile.
+
 ## Demo mode vs. live data
 
 The Prospector, the Enricher's data and the engagement simulation in `sequencer.js` are **demo providers**. They generate realistic, deterministic data, so you can demo the whole flow to a prospective client today. To go live, replace these pieces (their interfaces stay the same):

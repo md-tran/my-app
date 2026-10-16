@@ -11,6 +11,7 @@ export const defaultSettings = {
   workspaceName: 'MDT Analytics',
   website: { ...WEBSITE },
   useAI: true,
+  liveData: true,
   dailySendCap: 50,
   suppression: [],
   availability: {
@@ -74,7 +75,10 @@ function reducer(state, action) {
     case 'researchDone':
       return {
         ...state,
-        prospects: [...state.prospects.filter((p) => p.campaignId !== action.campaignId), ...action.prospects],
+        prospects: (() => {
+          const ids = new Set(action.prospects.map((p) => p.id));
+          return [...state.prospects.filter((p) => !ids.has(p.id)), ...action.prospects];
+        })(),
         campaigns: state.campaigns.map((c) => (c.id === action.campaignId ? { ...c, runs: (c.runs || 0) + 1, lastRunAt: new Date().toISOString() } : c)),
       };
     case 'updateProspect':

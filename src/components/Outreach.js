@@ -135,6 +135,12 @@ function SequenceCard({ p, open, toggle }) {
             <li key={s.step} className={`step-${s.status}`}>
               <b>Step {s.step} · {s.channel}</b> <span className="muted">{fmtDate(s.sendAt)} · {s.status}{s.opened ? ' · opened' : ''}</span>
               {s.subject && <div>{s.subject}</div>}
+              {s.channel === 'linkedin' && (
+                <div className="small">
+                  Manual step.{' '}
+                  {p.linkedin ? <a href={p.linkedin} target="_blank" rel="noreferrer">Open LinkedIn profile</a> : 'No LinkedIn profile on record.'}
+                </div>
+              )}
             </li>
           ))}
         </ol>

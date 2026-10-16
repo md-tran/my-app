@@ -2,16 +2,6 @@
 // prospect. Uses Claude via the local API server when it is configured, and
 // falls back to a signal-aware template so the pipeline always completes.
 
-// One cheap check per run, so a missing API key doesn't cost a failed request per prospect.
-export async function aiAvailable(fetchImpl = fetch) {
-  try {
-    const res = await fetchImpl('/api/health');
-    return res.ok && Boolean((await res.json()).ai);
-  } catch (e) {
-    return false;
-  }
-}
-
 export async function personalise(prospect, icp, { useAI = true, fetchImpl = fetch } = {}) {
   if (useAI) {
     try {

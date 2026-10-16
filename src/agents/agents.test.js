@@ -154,3 +154,34 @@ test('website booking requests become meetings and credit matching outbound pros
   s = reducer(s, { type: 'inboundSynced', requests: [request] });
   expect(s.inbound[0].status).toBe('confirmed');
 });
+
+test('live research uses Apollo results, skips known contacts and applies PECR checks', async () => {
+  const base = { firstName: 'A', lastName: 'B', title: 'VP Sales', seniority: 'VP', emailStatus: 'verified', signals: [], status: 'enriched', source: 'apollo' };
+  const company = { name: 'Co', domain: 'co.uk', industry: 'SaaS', employees: 100, region: 'UK', city: 'Leeds', techStack: [] };
+  const live = [
+    { ...base, id: 'ap_1', apolloId: '1', email: 'a@one.co.uk', company: { ...company, domain: 'one.co.uk' }, companiesHouse: { found: true, individualSubscriber: false, newDirectors: [] } },
+    { ...base, id: 'ap_2', apolloId: '2', email: 'b@two.co.uk', company: { ...company, domain: 'two.co.uk' }, companiesHouse: { found: false } },
+    { ...base, id: 'ap_3', apolloId: '3', email: 'c@three.co.uk', company: { ...company, domain: 'three.co.uk' }, companiesHouse: { found: true, individualSubscriber: true, newDirectors: [] } },
+  ];
+  let sentBody;
+  const saved = global.fetch;
+  global.fetch = async (url, init) => {
+    if (url === '/api/health') return { ok: true, json: async () => ({ ai: false, sources: { apollo: true } }) };
+    if (url === '/api/prospects/search') {
+      sentBody = JSON.parse(init.body);
+      return { ok: true, json: async () => ({ prospects: live, notes: ['Apollo found 3'] }) };
+    }
+    throw new Error(url);
+  };
+  try {
+    const existing = [{ id: 'x', apolloId: '99', email: 'old@client.com' }];
+    const out = await runResearch({ ...campaign, minScore: 0, runs: 1 }, settings, noop, { delay: 0, existing });
+    expect(sentBody.exclude).toEqual(expect.arrayContaining(['99', 'old@client.com']));
+    expect(sentBody.page).toBe(2);
+    expect(out.find((p) => p.id === 'ap_1').status).toBe('drafted');
+    expect(out.find((p) => p.id === 'ap_2').disqualifiedReason).toMatch(/Companies House/);
+    expect(out.find((p) => p.id === 'ap_3').disqualifiedReason).toMatch(/Partnership/);
+  } finally {
+    global.fetch = saved;
+  }
+});

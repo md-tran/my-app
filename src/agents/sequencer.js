@@ -9,7 +9,7 @@ export function buildSequence(message, startDate = new Date()) {
   const at = (days) => addBusinessDays(startDate, days).toISOString();
   return [
     { step: 1, channel: 'email', day: 0, sendAt: at(0), subject: message.subject, body: withOptOut(message.body), status: 'scheduled' },
-    { step: 2, channel: 'linkedin', day: 1, sendAt: at(1), body: 'Connection request with a short note referencing the email.', status: 'scheduled' },
+    { step: 2, channel: 'linkedin', day: 1, sendAt: at(1), body: 'Manual task: send a LinkedIn connection request with a short note referencing the email.', manual: true, status: 'scheduled' },
     ...message.followUps.map((f, i) => ({
       step: i + 3,
       channel: 'email',
