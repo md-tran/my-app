@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore, defaultIcp, defaultMessaging } from '../store';
 import { useAgents } from '../useAgents';
 import { INDUSTRIES, REGIONS, SENIORITY_TITLES } from '../agents/prospector';
-import { MultiSelect, Empty } from './ui';
+import { MultiSelect, Empty, ConfirmButton } from './ui';
 import { uid } from '../agents/random';
 import { funnel } from './Dashboard';
 
@@ -83,12 +83,7 @@ export default function Campaigns({ go }) {
                   </button>
                 )}
                 <button className="btn ghost" onClick={() => setEditing(c)}>Edit</button>
-                <button
-                  className="btn ghost danger"
-                  onClick={() => window.confirm(`Delete “${c.name}” and its prospects?`) && dispatch({ type: 'deleteCampaign', id: c.id })}
-                >
-                  Delete
-                </button>
+                <ConfirmButton label="Delete" confirmLabel="Delete campaign and its prospects?" onConfirm={() => dispatch({ type: 'deleteCampaign', id: c.id })} />
               </div>
             </section>
           );

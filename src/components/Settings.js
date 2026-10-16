@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
+import { ConfirmButton } from './ui';
 
 export default function Settings() {
   const { state, dispatch } = useStore();
@@ -104,13 +105,7 @@ export default function Settings() {
 
       <div className="actions">
         <button className="btn primary" type="submit">Save settings</button>
-        <button
-          className="btn ghost danger"
-          type="button"
-          onClick={() => window.confirm('Delete all campaigns, prospects and meetings?') && dispatch({ type: 'reset' })}
-        >
-          Reset workspace
-        </button>
+        <ConfirmButton label="Reset workspace" confirmLabel="Delete all campaigns, prospects and meetings?" onConfirm={() => dispatch({ type: 'reset' })} />
       </div>
     </form>
   );

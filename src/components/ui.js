@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 export const STATUS_LABELS = {
   sourced: 'Sourced',
@@ -59,3 +59,22 @@ export const pct = (n, d) => (d ? `${Math.round((n / d) * 100)}%` : '—');
 export const money = (n) => `£${Math.round(n).toLocaleString('en-GB')}`;
 export const fmtDate = (iso) =>
   new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+// Click once to arm, again to confirm; disarms itself after a few seconds.
+export function ConfirmButton({ label, confirmLabel, onConfirm, className = 'btn ghost danger' }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return (
+    <button
+      type="button"
+      className={`${className}${armed ? ' armed' : ''}`}
+      onClick={() => (armed ? (setArmed(false), onConfirm()) : setArmed(true))}
+    >
+      {armed ? confirmLabel : label}
+    </button>
+  );
+}
